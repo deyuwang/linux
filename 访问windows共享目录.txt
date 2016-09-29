@@ -1,0 +1,143 @@
+sudo mount -t cifs -l //192.168.31.1/doc /home/pi/xiaomi
+
+sudo mount -t cifs -l //192.168.31.1/视频 /home/pi/mi视频
+
+
+Samba实现了windows系统所使用的核心网络协议：SMB(Server Message Block)
+
+Samba可以提供如下功能：
+
+活动目录服务（Active Directory Server, ADS)
+主域控制器（Primary Domain Controller, PDC)
+共享目录 
+共享打印机
+Samba是一个高性能的服务软件，只需要更低的硬件就可以实现windows server相同的性能。
+
+使用配置：
+通过Samba我们能够实现windows系统访问树莓派的文件，也可以实现树莓派访问windows系统的文件。
+一、windows系统访问树莓派的文件
+1、安装Samba
+sudo apt-get install samba
+安装完成之后，在windwos上访问（我的linux server ip:192.168.1.66)：
+输入\\192.168.1.66 如图：
+Samba的配置
+通过标题栏可以看出已经可以访问了，但里面没有共享资源
+2、Samba的配置
+Samba的配置文件是/etc/samba/smb.conf，它所使用的语法和windows的.ini文件差不多。
+注：在修改配置练习时，请备份原配置文件
+
+最简单的配置
+[global]
+security=share
+[linux_share]
+path=/home/linux/share
+public=yes
+这个配置分成两段：
+第一段：global
+第二段：linux_share 这是一个自己定义的名字，当从windows访问时，就可以看到这个共享文件夹的名称
+
+security=share, 表示安全等级为share，这样用户不需要经过密码验证了。
+path定义了共享的文件夹的路径
+public=yes 表示公开给所有人访问
+配置完成时，检查一下配置文件的语法： 用testparm命令
+
+如图：
+Samba的配置
+
+重启Samba生效
+sudo /etc/init.d/smbd restart
+
+现在通过windows访问可以看到我们创建的共享文件夹了
+Samba的配置
+
+
+3、Samba的安全认证
+Samba提供了安全认证等级，分4个级别：
+share   ：  不需要输入用户名和密码
+user    :   需要输入用户名，密码， Samba对用户进行认证
+server  :   认证工作由另一台Samba服务器或者Windows server负责
+domain  :   指定一台windows server来进行用户认证
+
+其中user是Samba的默认安全认证级别，也就是说在/etc/samba/smb.conf配置文件中，将security一行改为security=user，那么用户在浏览共享内容前，就必须输入用户名和密码。
+
+现在把安全级别提升为user
+sudo vim /etc/samba/smb.conf
+
+[global]
+security=user
+[linux_share]
+path=/home/linux/share
+valid users=cdyemail     #指定有效的用户，多个用可访问用逗号隔开
+public=no                #公开访问为否
+
+重启samba服务：sudo /etc/init.d/smbd restart
+
+通过windows访问如图：
+Samba的配置
+
+现在要密码了，但是输入linux的用户名和密码无法通过认证，如果想让Samba通过认证，需要以下几点：
+(1)、在树莓派系统中创建用户
+(2)、在Samba中创建该用户
+(3)、在windows中创建相同的用户（和Samba用户密码相同）
+
+1）在Ubuntu中创建用户
+如果要将某个资源共享给新用户，必须先用adduser命令向Ubuntu中添加该用户。如：
+我们打算将某个资源共享给一个叫做cdyemail的用户，首先要做的就是在Ubuntu系统中创建这个用户
+sudo useradd cdyemail
+这样，系统中就有了cdyemail这个用户了。
+
+2）在Samba中创建用户
+Ubuntu系统中的用户，和Samba用户是两回事，要将资源共享给某个系统中的用户，必须将该用户添加到Samba中。
+添加方法：
+sudo smbpasswd -a cdyemail
+#smbpasswd是命令， -a表示add user , cdyemail表示用户名
+这样cdyemail的认证信息就被写入到Samba中了。重启Samba生效
+
+添加完用户和密码后，现在可以在windows中通过这个用户名和密码进行访问了。
+
+3）在windows中创建相同的用户
+在windows客户端中，我们需要创建与samba中完全相同的用户名和密码，这样才能通过Samba的认证，我们在windows客户端上打开Samba共享资源时，Samba会自动将windows环境中的用户信息传递到服务器上进行验证，因此如果登录的windows用户和Samba用户名相同的话（密码也相同），就不需要输入密码了，自动就能通过认证。
+
+4）Samba用户密码修改
+如果修改密码了，则windows与Samba都要同步修改。在Samba中修改的方法如下：
+sudo smbpasswd cdyemail #cdyemail为要修改的用户名
+如果windows不修改，则要手动输入Samba修改后的用户名和密码，windows修改后要求注销一下（重登录）
+
+4、共享权限的控制
+目录我们只要以访问文件的内容，但没有权限修改文件，也无法向共享目录添加新文件。
+1）添加文件写入权限
+[global]
+security=user
+[linux_share]
+path=/home/linux/share
+valid users=cdyemail
+writeable=yes  #添加一句，表示具有写权限了
+public=no
+重启samba服务 sudo /etc/init.d/smbd restart ，之后就可以写文件了，但要求服务器上的目录本身有这个权限。我测试时用rwx权限测试成功。
+对于服务器目录权限的测试：
+由于我共享的是share目录，创建时用root，所以在默认的情况下，即使开了writeable也没有权限写，因为服务器目录的本身权限有问题。
+（1）先修改用户所属
+sudo chown cdyemail:cdyemail
+（2）只保留cdyemail用户有权限访问这个目录
+sudo chmod u+rwx,g-rwx,o-rwx share
+（3）访问，测试写文件
+测试成功，cdyemail用户有权限写。
+
+二、树莓派访问windows系统文件
+首先，需要Windows进行网络映射。将Windows的一个文件夹共享即可（共享-高级共享，输入一个共享名即可）
+然后，在树莓派上安装如下程序：
+sudo apt-get install mount
+sudo apt-get install smbfs
+sudo apt-get install samba
+ 
+接着挂接文件系统，输入命令就行了：
+sudo mount -t cifs -l //192.168.139.212/test  /home/user/folder1
+需要输入Linux的密码
+其中，//192.168.139.212/test代表网络映射位置（就是你windows机器的ip地址和共享文件夹名）， /home/user/folder1代表树莓派下的文件夹位置（需要实现创建一个空的文件夹）。
+ 
+如果每次开机就希望该分区已经加载了，那么可以执行如下的步骤：
+sudo gedit /etc/fstab
+在文件末尾添加一行：
+//192.168.139.212/test  /home/user/folder1 cifs defaults,auto,username=user,password=xxx
+其中username和password就是树莓派的用户名密码
+然后重启或者输入sudo mount -a即可！！！！！！！！！！

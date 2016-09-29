@@ -1,0 +1,4 @@
+
+
+* 命令行
+  omxplayer -o hdmi /home/pi/mi视频/十二公民.mp4

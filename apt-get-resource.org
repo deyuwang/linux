@@ -1,0 +1,26 @@
+    本文说明如何修改树莓派软件源。如果使用raspbian系统，修改软件源的方法和ubuntu相同，可在http://www.raspbian.org找到最新的软件源镜像，修改/etc/apt/sources文件中的内容即可。
+
+    【相关博文】
+    【树莓派学习笔记——索引博文】——更多博文请关注。
+    【Linux学习笔记——Ubuntu更新软件源】
+
+1 软件源位于何处
+    【树莓派软件源镜像列表】
+    截止2014年8月，在中国的软件源镜像有——清华大学（2015年将停止访问）、大连东软信息学院、中国科技大学和华中科技大学等。
+    例如大连东软信息学院的软件源镜像地址为——http://mirrors.neusoft.edu.cn/raspbian/raspbian
+
+2 修改sources.list
+    【备份】
+    在修改之前先把源列表备份，然后再修改sources.list
+    cd /etc/apt
+    cp sources.list sources.list_back
+    【修改】
+    sudo nano sources.list
+   例如使用大连东软信息学院软件源镜像，修改之后的内容如下：
+    deb http://mirrors.neusoft.edu.cn/raspbian/raspbian wheezy main contrib non-free rpi 
+    
+3 更新软件源和软件
+    # 更新软件源
+    sudo apt-get update
+    # 更新软件
+    sudo apt-get upgrade

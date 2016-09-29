@@ -1,0 +1,10 @@
+#+TITLE: 基本Linux命令
+
+* 文件
+  ** 查看文件目录大小: du
+
+* 定时任务
+  crontab -e 
+
+* 同步
+  rsync
